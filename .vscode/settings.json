@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "hash.h": "c",
+        "utils.h": "c",
+        "*.tcc": "c"
+    }
+}
