@@ -1,20 +1,32 @@
 #ifndef __INTERP_H
 #define __INTERP_H
 
-typedef union Param{
+typedef struct Param{
 
-    /* Arith Parameters like '+', '-' */
-    struct
+    int tag;
+    union
     {
-        int a;
-        int b;
+        /* Arith Parameters like '+', '-' */
+        struct
+        {
+            int a;
+            int b;
+        };
+
+        // Process Parameters: name
+        const char *pname;
     };
+
 }Param;
 
-typedef union Result{
-
+typedef struct Result{
+    int tag;
     /* Arith Result like '+', '-' */
-    int ires;
+    union 
+    {
+        int ires;
+    };
+    
 }Result;
 
 typedef void (*Method)(Param *args, Result *result);

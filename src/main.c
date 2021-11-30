@@ -57,7 +57,11 @@ static void test_fp(){
     Result result;
 
     Call("add", &param, &result);
-
     printf("Call add(%d, %d) = %d\n",param.a, param.b, result.ires);
+
+    param.pname = "fpga1";
+    Call("start", &param, &result);
+
+    Call("stop", &param, &result);
 
 }

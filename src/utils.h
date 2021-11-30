@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define PROCESS_PREFIX "/home/fpg/school/fpga_monitor/test/"
 #define DEFAULT_BUCKET_SIZE 16
 #define MAX_METHOD_SIZE 16
 
