@@ -95,8 +95,8 @@ static void getProcStatus(const char *name, ProcStatus *proc){
 
     sscanf(stat + 1, " %c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d"
         "%lu %lu %*d %*d %*d %*d %*d %*d %*d %lu %ld",
-        proc->state, &proc->utime, &proc->stime, proc->vss, 
-        proc->rss);
+        &proc->state, &proc->utime, &proc->stime, &proc->vss, 
+        &proc->rss);
 
 
     printf("utime: %lu, stime: %lu, vss: %ld, rss: %ld\n",

@@ -1,5 +1,6 @@
 #include "interp.h"
 #include "hash.h"
+#include "stat.h"
 #include "log.h"
 
 #include <stdio.h>
@@ -20,6 +21,7 @@ static void test(Param *args, Result *result);
 static void add(Param *args, Result *result);
 static void start(Param *args, Result *result);
 static void stop(Param *args, Result *result);
+static void stat(Param *args, Result *result);
 
 /* Internal methods */
 static Param *parse(const char *command);
@@ -30,6 +32,7 @@ static MethodEntry methods[] = {
     {"add", add},
     {"start", start},
     {"stop", stop},
+    {"stat", stat}
 };
 
 
@@ -52,7 +55,20 @@ void InitMethodTable(){
 
 
 void Interpreter(const char *command, char *result){
+    Param *param = parse(command);
     
+    switch (param->tag)
+    {
+    case PARAM_STAT:
+        Call("stat", param, NULL);
+        break;
+    
+    default:
+        break;
+    }
+
+    free(param);
+
 }
 
 
@@ -69,9 +85,20 @@ void Call(const char *name, Param *args, Result *result){
 
 
 static Param *parse(const char *command){
-    
 
-    return NULL;
+    //remember to free param after interpreter this command
+    Param *param = (Param *) malloc(sizeof(Param));
+    //memset(param, 0 ,sizeof(Param));
+
+    if (strncmp(command, "stat start", 10) == 0){
+        param->tag = PARAM_STAT;
+        param->status = 1;
+    }else if (strncmp(command, "stat stop", 9) == 0){
+        param->tag = PARAM_STAT;
+        param->status = 0;
+    }else
+        Log(NOTICE, "unknown command:%s", command);
+    return param;
 }
 
 
@@ -107,6 +134,37 @@ static void stop(Param *args, Result *result){
     // User kill method 
     kill(pid, SIGKILL);
     Log(NOTICE, "Stop a process: %s pid: %d", args->pname, pid);
+}
+
+//Show resource usage periodic
+static void stat(Param *args, Result *result){
+    int whether_start = args->status;
+    pid_t pid;
+
+    static pid_t stat_pid = -1;
+
+    // Start a child process or stop a status process which already exists 
+    if (whether_start == 1){
+        // Start a new process
+        Log(NOTICE, "Start process status");
+        pid = fork();
+        if (pid == 0){
+            // child process
+            Log(NOTICE, "This is child process for status infos.");
+            ShowProcStatus();
+        }else
+            stat_pid = pid;
+    }else{
+        // Stop the stat child process if it exists
+        if (stat_pid < 0)
+            Log(NOTICE, "Thre is no stat process.");
+        else{
+            Log(NOTICE, "Stop status child process %d", stat_pid);
+            kill(stat_pid, SIGKILL);
+            stat_pid = -1;
+        }
+    }
+
 }
 
 static pid_t getPidByName(const char *name){

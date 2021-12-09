@@ -5,18 +5,23 @@
 #include "server.h"
 #include "hash.h"
 #include "interp.h"
+#include "stat.h"
 
 static void test_hash();
 static void test_fp();
+static void test_stat();
+static void looper();
 
 int main(int argc, char const *argv[])
 {
     printf("Hello world\n");
+    InitMethodTable();
 
     //test_hash();
-    test_fp();
+    //test_stat();
 
     //StartServer();
+    looper();
     return 0;
 }
 
@@ -64,4 +69,20 @@ static void test_fp(){
 
     Call("stop", &param, &result);
 
+}
+
+static void test_stat(){
+
+    // create a new process 
+    ShowProcStatus();   
+}
+
+static void looper(){
+    char line[128];
+
+    while (fgets(line, sizeof(line), stdin) != NULL){
+        printf("%s",line);
+
+        Interpreter(line, NULL);
+    }
 }

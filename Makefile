@@ -1,5 +1,5 @@
 
-SUBDIRS = src
+SUBDIRS = src test
 
 all:$(SUBDIRS)
 	@for dir in $(SUBDIRS); \
