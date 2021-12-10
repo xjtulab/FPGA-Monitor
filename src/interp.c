@@ -54,16 +54,19 @@ void InitMethodTable(){
 
 
 
-void Interpreter(const char *command, char *result){
+void Interpreter(const char *command, char *result_msg){
     Param *param = parse(command);
     
     switch (param->tag)
     {
     case PARAM_STAT:
         Call("stat", param, NULL);
+        strcpy(result_msg, 
+            param->status?"Start stat process":"Stop stat process");
         break;
     
     default:
+        strcpy(result_msg, "Unknown command.");
         break;
     }
 

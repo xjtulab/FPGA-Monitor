@@ -1,4 +1,5 @@
 #include "server.h"
+#include "interp.h"
 
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -17,6 +18,7 @@ void StartServer(){
     struct sockaddr_in cliaddr, servaddr;
     char ip[MAXLINE] = {0};
     char recvMsg[MAXLINE] = {0};
+    char sendMsg[MAXLINE] = {0};
 
     /* Create Server socket address struct. */
     memset(&servaddr, 0, sizeof(servaddr));
@@ -52,8 +54,20 @@ void StartServer(){
 
     /* Receive message and send the same message repeately. */
     while((n = read(connfd, recvMsg, MAXLINE) != 0)){
+        //Remove last '\n' or '\r', just set to zero.
+        char *p = recvMsg;
+        while(*p != '\r' && *p != '\n')
+            p++;
+        *p = '\0';
+
         Log(NOTICE, "Received msg: %s",recvMsg);
-        write(connfd, recvMsg, MAXLINE);
+        //Call Interpreter here
+        Interpreter(recvMsg, sendMsg);
+
+        //append last '\n'
+        strcat(sendMsg, "\n");
+
+        write(connfd, sendMsg, MAXLINE);
 
         /* Remember to clear message buffer each time. */
         memset(recvMsg, 0, sizeof(recvMsg));

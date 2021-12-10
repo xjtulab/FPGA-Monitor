@@ -41,5 +41,5 @@ typedef void (*Method)(Param *args, Result *result);
 
 void Call(const char *name, Param *args, Result *result);
 void InitMethodTable();
-void Interpreter(const char *command, char *result);
+void Interpreter(const char *command, char *result_msg);
 #endif

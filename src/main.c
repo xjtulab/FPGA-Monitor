@@ -20,8 +20,8 @@ int main(int argc, char const *argv[])
     //test_hash();
     //test_stat();
 
-    //StartServer();
-    looper();
+    StartServer();
+    //looper();
     return 0;
 }
 
