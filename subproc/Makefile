@@ -1,26 +1,21 @@
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(SRC))
 
-all:fpga1 read_cpu read_proc sysinfo
+all:fpga1 fpga2 fpga3 fpga4
 
 fpga1: fpga1.o
 	$(CC) $^ -o $@
-
-read_cpu: read_cpu.o
+fpga2: fpga2.o
 	$(CC) $^ -o $@
-
-read_proc: read_proc.o
+fpga3: fpga3.o
 	$(CC) $^ -o $@
-
-sysinfo: sysinfo.o
+fpga4: fpga4.o
 	$(CC) $^ -o $@
-
 
 %.o:%.c
 	$(CC) $(CFLGAS) -c  $< -o $@
 
 .PHONY: clean
 clean:
-	@echo "clean all!"
 	rm -rf $(OBJ) 
-	rm -rf fpga1 read_cpu read_proc sysinfo
+	rm -rf fpga1 fpga2 fpga3 fpga4

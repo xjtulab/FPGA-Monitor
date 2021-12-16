@@ -1,5 +1,7 @@
 #include "stat.h"
 #include "utils.h"
+#include "log.h"
+#include "interp.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -15,32 +17,32 @@ typedef struct CPUInfo{
 
 typedef struct ProcStatus{
     char state;
+    bool exist;
     unsigned long utime; //用户代码花费的cpu时间  
     unsigned long stime; //内核代码花费的cpu时间
     long vss; //virtual memory
     long rss; //physical memory
 }ProcStatus;
 
+
 static void getProcStatus(pid_t pid, ProcStatus *proc);
 static pid_t getPidByName(const char *name);
 static unsigned long getCPUTime();
 
 
-
 //show every program status
-void ShowProcStatus(){
+void *ShowProcStatus(void *arg){
     char buf[MAX_BUFFER_LENGTH];
     char parent_msg[16];
     ProcStatus pstate;
     unsigned long process_delta_time, total_delta_time;
     unsigned long used_mem;
-    unsigned long old_proc_time[nprocs], new_proc_time[nprocs];
+    unsigned long old_proc_time[MAX_PROCS], new_proc_time[MAX_PROCS];
     unsigned long old_cpu_time, new_cpu_time;
     int sockfd;
     struct sockaddr_in serv_addr;
     socklen_t addr_len;
     
-    pid_t pids[nprocs];
 
     struct sysinfo s_info;
     sysinfo(&s_info);
@@ -55,17 +57,21 @@ void ShowProcStatus(){
     serv_addr.sin_port = htons(9999);
     addr_len = sizeof(serv_addr);
 
+    memset(old_proc_time, 0 ,sizeof(old_proc_time));
+    memset(new_proc_time, 0 ,sizeof(new_proc_time));
 
     //First Initialize cpu time and each process's time
     old_cpu_time = getCPUTime();
-    for(int i = 0; i < nprocs; i++){
-        pids[i] = getPidByName(proc_names[i]);
-        if(pids[i] == -1)
-            continue;// There is no such process
-        
-        //Initialize process time point
-        getProcStatus(pids[i], &pstate);
-        old_proc_time[i] = pstate.stime + pstate.utime;
+    for(int i = 0; i < MAX_PROCS; i++){
+        if (active_procs[i] > 0){
+            pid_t pid = active_procs[i];
+            //Initialize process time point
+            getProcStatus(pid, &pstate);
+
+            if (pstate.exist)
+                old_proc_time[i] = pstate.stime + pstate.utime;
+
+        }
     }
 
 
@@ -80,8 +86,8 @@ void ShowProcStatus(){
         new_cpu_time =  getCPUTime();
         total_delta_time = new_cpu_time - old_cpu_time;
 
-        for(int i = 0; i < nprocs; i++){
-            pid_t pid = pids[i];
+        for(int i = 0; i < MAX_PROCS; i++){
+            pid_t pid = active_procs[i];
             char tmp[64];
             double cpu_percent, mem_percent;
 
@@ -93,12 +99,20 @@ void ShowProcStatus(){
             //Get the status of target process
             getProcStatus(pid, &pstate);
 
+            // This process is no longer exist, just skip report it.
+            if (pstate.exist == false)
+                continue;
+
             // The time point of this process is kernal time(stime) + user time(utime)
             new_proc_time[i] = pstate.stime + pstate.utime;
 
             // Calculate delta time and the percent of cpu
             process_delta_time = new_proc_time[i] - old_proc_time[i];
             cpu_percent = 100 * ((double)process_delta_time / total_delta_time);
+
+            // Fix first appear bug of each new process
+            if (cpu_percent > 100 || cpu_percent < 0)
+                cpu_percent = 0.0;
 
             // Calculate physical memory usage
             used_mem = pstate.rss * getpagesize();
@@ -122,6 +136,8 @@ void ShowProcStatus(){
         sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&serv_addr, addr_len);
         //printf("%s\n", buf);
     }
+
+    return NULL;
     
     
 }
@@ -156,15 +172,19 @@ static void getProcStatus(pid_t pid, ProcStatus *proc){
     sprintf(filename, "/proc/%d/stat", pid);
 
     FILE *file = fopen(filename, "r");
+
     if (!file){
-        printf("Cannot read file %s!\n", filename);
-        exit(1);
+        Log(NOTICE, "The process %d is not exist.", pid);
+        proc->exist = false;
+        return;
     }
 
     fgets(buf, 128, file);
     char *stat = strchr(buf, ')');
 
     memset(proc, 0 , sizeof(ProcStatus));
+    proc->exist = true;
+
 
     sscanf(stat + 1, " %c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d"
         "%lu %lu %*d %*d %*d %*d %*d %*d %*d %ld %ld",

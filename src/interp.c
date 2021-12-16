@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <pthread.h>
 
 typedef struct MethodEntry{
     const char *name;
@@ -14,7 +16,10 @@ typedef struct MethodEntry{
 
 /* Internal variables */
 HashTable *methodTable;
+int active_procs_count;
+pid_t active_procs[MAX_PROCS];
 
+static pthread_t stat_tid;
 
 /* Methods in the table */
 static void test(Param *args, Result *result);
@@ -26,12 +31,15 @@ static void stat(Param *args, Result *result);
 /* Internal methods */
 static Param *parse(const char *command);
 static pid_t getPidByName(const char *name);
+static void addProc(pid_t pid);
+static void removeProc(pid_t pid);
+static void shutdown();
 
 static MethodEntry methods[] = {
     {"test", test},
     {"add", add},
-    {"start", start},
-    {"stop", stop},
+    {"start process", start},
+    {"stop process", stop},
     {"stat", stat}
 };
 
@@ -52,9 +60,16 @@ void InitMethodTable(){
 
 }
 
+void InitAll(){
+    InitMethodTable();
+    active_procs_count = 0;
+    stat_tid = 0;
+    memset(active_procs, -1, sizeof(active_procs));
+}
 
 
-void Interpreter(const char *command, char *result_msg){
+
+int Interpreter(const char *command, char *result_msg){
     Param *param = parse(command);
     
     switch (param->tag)
@@ -65,6 +80,25 @@ void Interpreter(const char *command, char *result_msg){
             param->status?"Start stat process":"Stop stat process");
         break;
     
+    case PARAM_START:
+        Log(NOTICE, "Prepare to start process '%s'", param->pname);
+        Call("start process", param, NULL);
+        sprintf(result_msg, "Start process '%s' ", param->pname);
+        break;
+
+    case PARAM_STOP:
+        Log(NOTICE, "Prepare to stop process '%s'", param->pname);
+        Call("stop process", param, NULL);
+        sprintf(result_msg, "Stop process '%s' ", param->pname);
+        break;
+
+    case PARAM_SHUTDOWN:
+        Log(NOTICE, "Prepare to shutdown this monitor");
+        shutdown();
+        sprintf(result_msg, "Now monitor is closed. '%s' ", param->pname);
+        return 0;
+        break;
+    
     default:
         strcpy(result_msg, "Unknown command.");
         break;
@@ -72,6 +106,7 @@ void Interpreter(const char *command, char *result_msg){
 
     free(param);
 
+    return 1;
 }
 
 
@@ -86,7 +121,13 @@ void Call(const char *name, Param *args, Result *result){
 
 }
 
-
+/*
+ * Commands:
+ * start process [process_name]  => start a process
+ * stop process  [process_name] => stop a process
+ * stat stat => start stat process
+ * stop stat => stop stat process 
+ */ 
 static Param *parse(const char *command){
 
     //remember to free param after interpreter this command
@@ -99,6 +140,22 @@ static Param *parse(const char *command){
     }else if (strncmp(command, "stat stop", 9) == 0){
         param->tag = PARAM_STAT;
         param->status = 0;
+    }else if(strncmp(command, "start process", 13) == 0){
+        param->tag = PARAM_START;
+
+        //skip prefix and additional space 
+        param->pname = command +13;
+        while(!isalpha(*param->pname) && *param->pname != '\0')
+            param->pname++;
+    }else if(strncmp(command, "stop process", 12) == 0){
+        param->tag = PARAM_STOP;
+
+        //skip prefix and additional space
+        param->pname = command + 12; // skip 'stop process' prefix
+        while(!isalpha(*param->pname) && *param->pname != '\0')
+            param->pname++;
+    }else if(strncmp(command, "q", 1) == 0){
+        param->tag = PARAM_SHUTDOWN;
     }else
         Log(NOTICE, "unknown command:%s", command);
     return param;
@@ -121,8 +178,10 @@ static void start(Param *args, Result *result){
     // We use '&' to make it start at background
     snprintf(cmd, sizeof(cmd), "%s%s &", PROCESS_PREFIX, args->pname);
     system(cmd);
-    
     pid = getPidByName(args->pname);
+
+    if (pid >= 0)
+        addProc(pid);
 
     Log(NOTICE, "Start a process: %s pid: %d", args->pname, pid);
 }
@@ -131,20 +190,24 @@ static void start(Param *args, Result *result){
 static void stop(Param *args, Result *result){
     pid_t pid = getPidByName(args->pname);
 
-    if (pid < 0)
-        Log(ERROR, "There is no such process named '%s'\n");
+    if (pid < 0){
+        Log(WARNING, "There is no such process named '%s'\n");
+        return;
+    }
     
     // User kill method 
     kill(pid, SIGKILL);
+
+    removeProc(pid);
     Log(NOTICE, "Stop a process: %s pid: %d", args->pname, pid);
 }
 
 //Show resource usage periodic
 static void stat(Param *args, Result *result){
     int whether_start = args->status;
-    pid_t pid;
 
-    static pid_t stat_pid = -1;
+    #if 0
+    pid_t pid;
 
     // Start a child process or stop a status process which already exists 
     if (whether_start == 1){
@@ -167,6 +230,20 @@ static void stat(Param *args, Result *result){
             stat_pid = -1;
         }
     }
+    #endif
+    if (whether_start == 1){
+        // Start a new thread
+        Log(NOTICE, "Start stat thread");
+        pthread_create(&stat_tid, NULL, ShowProcStatus, NULL);    
+    }else{
+        if (stat_tid == 0)
+            Log(NOTICE, "Thre is no stat thread.");
+        else{
+            Log(NOTICE, "Stop status thread %d");
+            pthread_cancel(stat_tid);
+            stat_tid = 0;
+        }
+    }
 
 }
 
@@ -187,4 +264,40 @@ static pid_t getPidByName(const char *name){
 
     pclose(fp);
     return pid;
+}
+
+static void addProc(pid_t pid){
+    for(int i = 0; i < MAX_PROCS; i++){
+        if (active_procs[i] < 0){
+            active_procs[i] = pid;
+            Log(NOTICE, "Add process %d to active array.", pid);
+            break;
+        }
+    }
+    active_procs_count++;
+}
+static void removeProc(pid_t pid){
+    for(int i = 0; i < MAX_PROCS; i++){
+        if (active_procs[i] == pid){
+            active_procs[i] = -1;
+            Log(NOTICE, "Remove process %d from active array.", pid);
+            break;
+        }
+    }
+    active_procs_count--;
+}
+
+static void shutdown(){
+    for(int i = 0; i < MAX_PROCS; i++){
+        if (active_procs[i] > 0){
+            kill(active_procs[i], SIGKILL);
+            Log(NOTICE, "Stop process: %d", active_procs[i]);
+            active_procs[i] = -1;
+        }
+    }
+
+    if (stat_tid > 0){
+        pthread_cancel(stat_tid);
+        Log(NOTICE, "Shutdown stat thread");
+    }
 }

@@ -62,7 +62,9 @@ void StartServer(){
 
         Log(NOTICE, "Received msg: %s",recvMsg);
         //Call Interpreter here
-        Interpreter(recvMsg, sendMsg);
+        int ret =  Interpreter(recvMsg, sendMsg);
+        if (ret == 0)
+            break;
 
         //append last '\n'
         strcat(sendMsg, "\n");

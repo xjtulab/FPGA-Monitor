@@ -6,11 +6,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PROCESS_PREFIX "/home/fpg/school/fpga_monitor/test/"
+#define PROCESS_PREFIX "/home/fpg/school/fpga_monitor/subproc/"
 #define DEFAULT_BUCKET_SIZE 16
 #define MAX_METHOD_SIZE 16
-#define MAX_PROC 8
+#define MAX_PROCS 8
 #define MAX_BUFFER_LENGTH 256
+
 
 typedef uint32_t (*HashFunc)(uintptr_t key);
 typedef bool (*EqualFunc)(const void *p1, const void *p2);

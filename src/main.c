@@ -15,7 +15,7 @@ static void looper();
 int main(int argc, char const *argv[])
 {
     printf("Hello world\n");
-    InitMethodTable();
+    InitAll();
 
     //test_hash();
     //test_stat();
@@ -71,11 +71,6 @@ static void test_fp(){
 
 }
 
-static void test_stat(){
-
-    // create a new process 
-    ShowProcStatus();   
-}
 
 static void looper(){
     char line[128];

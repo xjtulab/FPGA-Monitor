@@ -1,5 +1,6 @@
-
-SUBDIRS = src test
+CC=gcc
+CFLGAS = -Wall -g 
+SUBDIRS = src test subproc
 
 all:$(SUBDIRS)
 	@for dir in $(SUBDIRS); \

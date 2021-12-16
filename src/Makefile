@@ -1,8 +1,9 @@
-CC=gcc
-CFLGAS = -Wall -g 
+
 SRC = $(wildcard *.c)
 OBJ = $(patsubst %.c, %.o, $(SRC))
-TARGET= ../monitor
+CFLGAS = -Wall -g -pthread
+TARGET= ../fpga_monitor
+LDFLGAS = -pthread
 
 $(TARGET):$(OBJ)
 	$(CC) $(LDFLGAS) $^ -o $@

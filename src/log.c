@@ -8,6 +8,7 @@
 #define RED                  "\e[0;31m"
 #define GREEN                "\e[0;32m"
 #define L_BLUE               "\e[1;34m"
+#define L_RED                "\e[1;31m"
 
 void Log(LOG_LEVEL level, const char *fmt, ...){
     va_list args;
@@ -21,6 +22,8 @@ void Log(LOG_LEVEL level, const char *fmt, ...){
     /* Print log prefix: notice or error. */
     if(level == NOTICE){
         printf("%s[NOTICE]%s: ", GREEN, NONE);
+    }else if(level == WARNING){
+        printf("%s[WARNING]%s: ", L_RED, NONE);
     }else{
         printf("%s[ERROR]%s: ", RED, NONE);
     }

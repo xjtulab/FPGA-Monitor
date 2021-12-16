@@ -5,6 +5,7 @@
 
 typedef enum LOG_LEVEL{
     NOTICE,
+    WARNING,
     ERROR
 }LOG_LEVEL;
 
