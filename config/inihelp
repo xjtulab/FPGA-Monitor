@@ -1,0 +1,7 @@
+1. agent ip
+2. status ip (负责收集监控信息的ip)
+3. status 端口
+4. domain_id
+4. publish topic 的名字
+5. subscribe topic 的名字
+(最后加个换行符)
