@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 typedef struct MethodEntry{
     const char *name;
@@ -27,6 +29,8 @@ static void add(Param *args, Result *result);
 static void start(Param *args, Result *result);
 static void stop(Param *args, Result *result);
 static void stat(Param *args, Result *result);
+static void incre_priority(Param *args, Result *result);
+static void decre_priority(Param *args, Result *result);
 
 /* Internal methods */
 static Param *parse(const char *command);
@@ -40,7 +44,9 @@ static MethodEntry methods[] = {
     {"add", add},
     {"start process", start},
     {"stop process", stop},
-    {"stat", stat}
+    {"stat", stat},
+    {"incre priority", incre_priority},
+    {"decre priority", decre_priority},
 };
 
 
@@ -300,4 +306,34 @@ static void shutdown(){
         pthread_cancel(stat_tid);
         Log(NOTICE, "Shutdown stat thread");
     }
+}
+
+static void incre_priority(Param *args, Result *result){
+    pid_t pid = getPidByName(args->pname);
+    int priority_value;
+
+    if (pid < 0){
+        Log(WARNING, "There is no process named '%s'", args->pname);
+        return;
+    }
+
+    priority_value = getpriority(PRIO_PROCESS, pid);
+    setpriority(PRIO_PROCESS, pid, priority_value +1);
+
+    Log(NOTICE, "Now the priority value is %d", priority_value + 1);
+    
+}
+static void decre_priority(Param *args, Result *result){
+    pid_t pid = getPidByName(args->pname);
+    int priority_value;
+
+    if (pid < 0){
+        Log(WARNING, "There is no process named '%s'", args->pname);
+        return;
+    }
+
+    priority_value = getpriority(PRIO_PROCESS, pid);
+    setpriority(PRIO_PROCESS, pid, priority_value -1);
+
+    Log(NOTICE, "Now the priority value is %d", priority_value - 1);
 }

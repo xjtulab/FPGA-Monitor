@@ -47,8 +47,8 @@ int main(int argc, char const *argv[])
 
 
 
-    printf("utime: %lu, stime: %lu, vss: %ld, rss: %ld\n",
-        pstate.utime, pstate.stime, pstate.vss, pstate.rss);
+    printf("utime: %lu, stime: %lu, vss: %ld, rss: %ld Bytes\n",
+        pstate.utime, pstate.stime, pstate.vss, pstate.rss * getpagesize());
     
 
 
